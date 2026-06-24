@@ -365,6 +365,19 @@ def main() -> None:
             gc.delete_event(cal_id, e["id"])
             deleted += 1
 
+    result = {
+        "calendar": CALENDAR_NAME,
+        "board": BOARD_NAME,
+        "created": created,
+        "updated": updated,
+        "deleted": deleted,
+        "active_dated_tasks": len(tasks),
+    }
+    result_path = os.environ.get("SYNC_RESULT_PATH")
+    if result_path:
+        with open(result_path, "w") as f:
+            json.dump(result, f, indent=2)
+            f.write("\n")
     print(f"{CALENDAR_NAME} sync: created {created}, updated {updated}, deleted {deleted}; active dated tasks {len(tasks)}")
 
 
