@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Sync monday.com dated tasks/subitems into Google Calendar.
 
-Defaults are currently set for the JunkDoctors board, but board/calendar names are
-configurable via environment variables so the same project can grow into multiple
-Monday → Google Calendar syncs.
+Board and calendar targets are configured through environment variables so the
+same project can support business, personal, or multiple Monday → Google Calendar
+syncs without changing source code.
 
 Designed for GitHub Actions / cloud execution. Secrets are supplied through
 environment variables, not files.
@@ -20,21 +20,21 @@ import urllib.parse
 import urllib.request
 from typing import Any
 
-ACCOUNT_NOTE = "info@zerobot.ai"
-BOARD_ID = os.environ.get("MONDAY_BOARD_ID", "18419165433")
-BOARD_NAME = os.environ.get("MONDAY_BOARD_NAME", "JunkDoctors")
-CALENDAR_NAME = os.environ.get("GOOGLE_CALENDAR_NAME", "Mon: JunkDoctors")
-TIMEZONE = os.environ.get("GOOGLE_CALENDAR_TIMEZONE", "America/New_York")
-SOURCE = os.environ.get("SYNC_SOURCE", f"monday_{BOARD_NAME.lower().replace(' ', '_')}")
-GOOGLE_TIME_MIN = os.environ.get("GOOGLE_TIME_MIN", "2025-01-01T00:00:00Z")
-GOOGLE_TIME_MAX = os.environ.get("GOOGLE_TIME_MAX", "2032-12-31T23:59:59Z")
-
-
 def require_env(name: str) -> str:
     val = os.environ.get(name)
     if not val:
         raise SystemExit(f"missing required environment variable: {name}")
     return val
+
+
+ACCOUNT_NOTE = os.environ.get("GOOGLE_ACCOUNT_NOTE", "monday-gcal-sync")
+BOARD_ID = require_env("MONDAY_BOARD_ID")
+BOARD_NAME = require_env("MONDAY_BOARD_NAME")
+CALENDAR_NAME = require_env("GOOGLE_CALENDAR_NAME")
+TIMEZONE = os.environ.get("GOOGLE_CALENDAR_TIMEZONE", "America/New_York")
+SOURCE = os.environ.get("SYNC_SOURCE", f"monday_{BOARD_NAME.lower().replace(' ', '_')}")
+GOOGLE_TIME_MIN = os.environ.get("GOOGLE_TIME_MIN", "2025-01-01T00:00:00Z")
+GOOGLE_TIME_MAX = os.environ.get("GOOGLE_TIME_MAX", "2032-12-31T23:59:59Z")
 
 
 def http_json(url: str, *, method: str = "GET", headers: dict[str, str] | None = None, body: Any = None, timeout: int = 45) -> dict[str, Any]:
