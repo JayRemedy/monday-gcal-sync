@@ -67,7 +67,7 @@ Configured in `worker/wrangler.toml`:
 
 - `GITHUB_OWNER=JayRemedy`
 - `GITHUB_REPO=monday-gcal-sync`
-- `MONDAY_BOARD_ID=1234567890`
+- `MONDAY_BOARD_IDS=1234567890` — comma-separated if monday.com subitem webhooks report a separate subitems board ID
 - `WEBHOOK_PATH=/monday-gcal-example`
 
 Before production, change `WEBHOOK_PATH` to a generated hard-to-guess path.

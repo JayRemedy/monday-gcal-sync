@@ -26,9 +26,13 @@ export default {
     }
 
     const event = payload?.event || {};
-    const boardId = String(event.boardId || event.board_id || '');
-    if (env.MONDAY_BOARD_ID && boardId && boardId !== String(env.MONDAY_BOARD_ID)) {
-      return json({ ok: true, ignored: true, reason: 'different board' });
+    const boardIds = candidateBoardIds(event);
+    const allowedBoardIds = String(env.MONDAY_BOARD_IDS || env.MONDAY_BOARD_ID || '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
+    if (allowedBoardIds.length && boardIds.length && !boardIds.some((id) => allowedBoardIds.includes(id))) {
+      return json({ ok: true, ignored: true, reason: 'different board', board_ids: boardIds });
     }
 
     // Basic shared-secret guard. Use a hard-to-guess path plus this header if you later
@@ -74,6 +78,18 @@ async function dispatchGitHub(env, payload) {
     const text = await res.text();
     throw new Error(`GitHub dispatch failed: ${res.status} ${text}`);
   }
+}
+
+function candidateBoardIds(event) {
+  const candidates = [
+    event.boardId,
+    event.board_id,
+    event.parentBoardId,
+    event.parent_board_id,
+    event.parentItemBoardId,
+    event.parent_item_board_id,
+  ];
+  return [...new Set(candidates.filter((v) => v !== undefined && v !== null && String(v).trim() !== '').map((v) => String(v)))];
 }
 
 function required(env, name) {

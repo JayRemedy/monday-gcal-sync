@@ -5,7 +5,8 @@ compatibility_date = "2026-06-24"
 [vars]
 GITHUB_OWNER = "JayRemedy"
 GITHUB_REPO = "monday-gcal-sync"
-MONDAY_BOARD_ID = "1234567890"
+# Comma-separated when monday.com subitem webhooks report a separate subitems board ID.
+MONDAY_BOARD_IDS = "1234567890"
 # Set this to a generated hard-to-guess path before production.
 WEBHOOK_PATH = "/monday-gcal-example"
 
