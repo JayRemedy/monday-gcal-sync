@@ -1,0 +1,19 @@
+# Local-only / secrets
+.env
+*.env
+monday.env
+*.log
+*.sqlite
+*.db
+.DS_Store
+
+# Cloudflare / Node
+node_modules/
+.wrangler/
+.dev.vars
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
