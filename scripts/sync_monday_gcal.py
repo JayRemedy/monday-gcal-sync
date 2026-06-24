@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Sync monday.com JunkDoctors dated tasks/subitems into Google Calendar.
+"""Sync monday.com dated tasks/subitems into Google Calendar.
+
+Defaults are currently set for the JunkDoctors board, but board/calendar names are
+configurable via environment variables so the same project can grow into multiple
+Monday → Google Calendar syncs.
 
 Designed for GitHub Actions / cloud execution. Secrets are supplied through
 environment variables, not files.
@@ -21,7 +25,7 @@ BOARD_ID = os.environ.get("MONDAY_BOARD_ID", "18419165433")
 BOARD_NAME = os.environ.get("MONDAY_BOARD_NAME", "JunkDoctors")
 CALENDAR_NAME = os.environ.get("GOOGLE_CALENDAR_NAME", "Mon: JunkDoctors")
 TIMEZONE = os.environ.get("GOOGLE_CALENDAR_TIMEZONE", "America/New_York")
-SOURCE = os.environ.get("SYNC_SOURCE", "monday_junkdoctors")
+SOURCE = os.environ.get("SYNC_SOURCE", f"monday_{BOARD_NAME.lower().replace(' ', '_')}")
 GOOGLE_TIME_MIN = os.environ.get("GOOGLE_TIME_MIN", "2025-01-01T00:00:00Z")
 GOOGLE_TIME_MAX = os.environ.get("GOOGLE_TIME_MAX", "2032-12-31T23:59:59Z")
 
@@ -111,7 +115,7 @@ class GoogleCalendar:
                 break
         created = self.req("/calendars", method="POST", body={
             "summary": CALENDAR_NAME,
-            "description": "Auto-synced from monday.com JunkDoctors board due dates.",
+            "description": f"Auto-synced from monday.com {BOARD_NAME} board due dates.",
             "timeZone": TIMEZONE,
         })
         return created["id"]
@@ -361,7 +365,7 @@ def main() -> None:
             gc.delete_event(cal_id, e["id"])
             deleted += 1
 
-    print(f"Mon: JunkDoctors sync: created {created}, updated {updated}, deleted {deleted}; active dated tasks {len(tasks)}")
+    print(f"{CALENDAR_NAME} sync: created {created}, updated {updated}, deleted {deleted}; active dated tasks {len(tasks)}")
 
 
 if __name__ == "__main__":

@@ -1,13 +1,13 @@
-name = "monday-jd-calendar-webhook"
+name = "monday-gcal-webhook"
 main = "src/index.js"
 compatibility_date = "2026-06-24"
 
 [vars]
 GITHUB_OWNER = "JayRemedy"
-GITHUB_REPO = "monday-jd-calendar-sync"
+GITHUB_REPO = "monday-gcal-sync"
 MONDAY_BOARD_ID = "18419165433"
-# Set this to a generated path before production, e.g. /monday-jd-calendar-<random>
-WEBHOOK_PATH = "/monday-jd-calendar"
+# Set this to a generated path before production, e.g. /monday-gcal-<random>
+WEBHOOK_PATH = "/monday-gcal"
 
 # Secrets to set with wrangler:
 # wrangler secret put GITHUB_DISPATCH_TOKEN

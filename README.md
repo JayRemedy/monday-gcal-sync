@@ -1,6 +1,6 @@
-# Monday JunkDoctors Calendar Sync
+# Monday → Google Calendar Sync
 
-Cloud-hostable monday.com → Google Calendar mirror for the JunkDoctors board.
+Cloud-hostable monday.com → Google Calendar mirror. The first configured instance is JunkDoctors, but the repo is intended to support business, personal, or additional Monday board → Google Calendar syncs over time.
 
 The intended production flow is:
 
@@ -16,7 +16,7 @@ This avoids depending on a personal computer or a business VPS. Secrets live in 
 
 ## What syncs
 
-The sync reads dated items and subitems from the `JunkDoctors` board and mirrors them into the `Mon: JunkDoctors` Google Calendar.
+The current sync reads dated items and subitems from the `JunkDoctors` board and mirrors them into the `Mon: JunkDoctors` Google Calendar. Board/calendar names are environment-driven so additional business or personal syncs can be added later without renaming the project.
 
 Event shape:
 
@@ -57,9 +57,9 @@ Set these in Cloudflare Workers:
 Configured in `worker/wrangler.toml`:
 
 - `GITHUB_OWNER=JayRemedy`
-- `GITHUB_REPO=monday-jd-calendar-sync`
+- `GITHUB_REPO=monday-gcal-sync`
 - `MONDAY_BOARD_ID=18419165433`
-- `WEBHOOK_PATH=/monday-jd-calendar`
+- `WEBHOOK_PATH=/monday-gcal`
 
 Before production, change `WEBHOOK_PATH` to a generated hard-to-guess path.
 
@@ -86,13 +86,13 @@ Use the deployed Worker URL plus `WEBHOOK_PATH` as the monday.com webhook URL.
 Run syntax check:
 
 ```bash
-python3 -m py_compile scripts/sync_monday_junkdoctors_calendar.py
+python3 -m py_compile scripts/sync_monday_gcal.py
 ```
 
 Run a sync with env vars loaded:
 
 ```bash
-python3 scripts/sync_monday_junkdoctors_calendar.py
+python3 scripts/sync_monday_gcal.py
 ```
 
 ## Security notes
