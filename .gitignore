@@ -17,3 +17,6 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+
+# Local production deploy config
+worker/wrangler.prod.local.toml
