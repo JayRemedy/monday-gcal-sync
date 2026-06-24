@@ -9,7 +9,7 @@ on:
     - cron: '*/15 * * * *'
 
 concurrency:
-  group: monday-jd-calendar-sync
+  group: monday-gcal-sync
   cancel-in-progress: false
 
 jobs:
@@ -36,4 +36,4 @@ jobs:
           MONDAY_BOARD_NAME: JunkDoctors
           GOOGLE_CALENDAR_NAME: 'Mon: JunkDoctors'
           GOOGLE_CALENDAR_TIMEZONE: America/New_York
-        run: python3 scripts/sync_monday_junkdoctors_calendar.py
+        run: python3 scripts/sync_monday_gcal.py

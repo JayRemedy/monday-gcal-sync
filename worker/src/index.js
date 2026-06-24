@@ -1,7 +1,7 @@
 export default {
   async fetch(request, env, ctx) {
     if (request.method === 'GET') {
-      return json({ ok: true, service: 'monday-jd-calendar-webhook' });
+      return json({ ok: true, service: 'monday-gcal-webhook' });
     }
 
     if (request.method !== 'POST') {
@@ -36,7 +36,7 @@ export default {
     // entropy is still important.
     if (env.INBOUND_SECRET) {
       const got = request.headers.get('x-webhook-secret') || url.searchParams.get('secret') || '';
-      if (got && got !== env.INBOUND_SECRET) {
+      if (got !== env.INBOUND_SECRET) {
         return json({ error: 'unauthorized' }, 401);
       }
     }
@@ -57,7 +57,7 @@ async function dispatchGitHub(env, payload) {
       'Accept': 'application/vnd.github+json',
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
-      'User-Agent': 'monday-jd-calendar-cloudflare-worker',
+      'User-Agent': 'monday-gcal-cloudflare-worker',
       'X-GitHub-Api-Version': '2022-11-28',
     },
     body: JSON.stringify({
