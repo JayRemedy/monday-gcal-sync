@@ -32,10 +32,10 @@ jobs:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
-          MONDAY_BOARD_ID: '18419165433'
-          MONDAY_BOARD_NAME: JunkDoctors
-          GOOGLE_CALENDAR_NAME: 'Mon: JunkDoctors'
-          GOOGLE_CALENDAR_TIMEZONE: America/New_York
+          MONDAY_BOARD_ID: ${{ vars.MONDAY_BOARD_ID }}
+          MONDAY_BOARD_NAME: ${{ vars.MONDAY_BOARD_NAME }}
+          GOOGLE_CALENDAR_NAME: ${{ vars.GOOGLE_CALENDAR_NAME }}
+          GOOGLE_CALENDAR_TIMEZONE: ${{ vars.GOOGLE_CALENDAR_TIMEZONE || 'America/New_York' }}
           SYNC_RESULT_PATH: sync-result.json
         run: python3 scripts/sync_monday_gcal.py
 
@@ -60,6 +60,7 @@ jobs:
           CREATED: ${{ steps.catchup.outputs.created }}
           UPDATED: ${{ steps.catchup.outputs.updated }}
           DELETED: ${{ steps.catchup.outputs.deleted }}
+          CALENDAR_NAME: ${{ vars.GOOGLE_CALENDAR_NAME }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           python3 - <<'PY'
@@ -74,7 +75,7 @@ jobs:
 
           text = (
               "⚠️ monday-gcal catch-up fixed missed calendar changes\n"
-              f"Mon: JunkDoctors: created {os.environ['CREATED']}, "
+              f"{os.environ.get('CALENDAR_NAME') or 'Configured calendar'}: created {os.environ['CREATED']}, "
               f"updated {os.environ['UPDATED']}, deleted {os.environ['DELETED']}\n"
               "This means the scheduled backup caught something the webhook path did not fully cover.\n"
               f"Run: {os.environ['RUN_URL']}"

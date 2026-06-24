@@ -1,6 +1,6 @@
 # Monday → Google Calendar Sync
 
-Cloud-hostable monday.com → Google Calendar mirror. The first configured instance is JunkDoctors, but the repo is intended to support business, personal, or additional Monday board → Google Calendar syncs over time.
+Cloud-hostable monday.com → Google Calendar mirror for business, personal, or multiple Monday board → Google Calendar syncs.
 
 The intended production flow is:
 
@@ -9,14 +9,14 @@ monday.com webhook
 → Cloudflare Worker
 → GitHub repository_dispatch
 → GitHub Actions sync job
-→ Google Calendar: Mon: JunkDoctors
+→ Google Calendar
 ```
 
 This avoids depending on a personal computer or a business VPS. Secrets live in GitHub Actions secrets and Cloudflare Worker secrets, not in source control.
 
 ## What syncs
 
-The current sync reads dated items and subitems from the `JunkDoctors` board and mirrors them into the `Mon: JunkDoctors` Google Calendar. Board/calendar names are environment-driven so additional business or personal syncs can be added later without renaming the project.
+The sync reads dated items and subitems from a configured monday.com board and mirrors them into a configured Google Calendar. Board/calendar names are environment-driven so additional business or personal syncs can be added without renaming the project.
 
 Event shape:
 
@@ -42,8 +42,17 @@ Set these in GitHub repository settings → Secrets and variables → Actions:
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
 - `GOOGLE_REFRESH_TOKEN`
+- `TELEGRAM_BOT_TOKEN` optional, for catch-up drift alerts
+- `TELEGRAM_CHAT_ID` optional, for catch-up drift alerts
 
-The workflow also runs every 15 minutes as a backup catch-up sync.
+Repository variables:
+
+- `MONDAY_BOARD_ID`
+- `MONDAY_BOARD_NAME`
+- `GOOGLE_CALENDAR_NAME`
+- `GOOGLE_CALENDAR_TIMEZONE`
+
+The workflow also runs every 15 minutes as a backup catch-up sync. If that scheduled catch-up creates, updates, or deletes events, it can send a Telegram alert so missed webhook coverage is visible.
 
 ## Cloudflare Worker secrets
 
@@ -58,8 +67,8 @@ Configured in `worker/wrangler.toml`:
 
 - `GITHUB_OWNER=JayRemedy`
 - `GITHUB_REPO=monday-gcal-sync`
-- `MONDAY_BOARD_ID=18419165433`
-- `WEBHOOK_PATH=/monday-gcal`
+- `MONDAY_BOARD_ID=1234567890`
+- `WEBHOOK_PATH=/monday-gcal-example`
 
 Before production, change `WEBHOOK_PATH` to a generated hard-to-guess path.
 
@@ -107,4 +116,4 @@ Do not commit:
 - live webhook setup JSON
 - logs
 
-The business VPS is intentionally not part of this design, so John's personal Google credentials do not need to be placed there.
+The business VPS is intentionally not part of this design, so personal Google credentials do not need to be placed there.
