@@ -36,4 +36,51 @@ jobs:
           MONDAY_BOARD_NAME: JunkDoctors
           GOOGLE_CALENDAR_NAME: 'Mon: JunkDoctors'
           GOOGLE_CALENDAR_TIMEZONE: America/New_York
+          SYNC_RESULT_PATH: sync-result.json
         run: python3 scripts/sync_monday_gcal.py
+
+      - name: Check whether scheduled catch-up found missed changes
+        id: catchup
+        if: ${{ github.event_name == 'schedule' }}
+        run: |
+          created=$(python3 -c "import json; print(json.load(open('sync-result.json'))['created'])")
+          updated=$(python3 -c "import json; print(json.load(open('sync-result.json'))['updated'])")
+          deleted=$(python3 -c "import json; print(json.load(open('sync-result.json'))['deleted'])")
+          total=$((created + updated + deleted))
+          echo "created=$created" >> "$GITHUB_OUTPUT"
+          echo "updated=$updated" >> "$GITHUB_OUTPUT"
+          echo "deleted=$deleted" >> "$GITHUB_OUTPUT"
+          echo "total=$total" >> "$GITHUB_OUTPUT"
+
+      - name: Alert when scheduled catch-up had to fix calendar drift
+        if: ${{ github.event_name == 'schedule' && steps.catchup.outputs.total != '0' }}
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          CREATED: ${{ steps.catchup.outputs.created }}
+          UPDATED: ${{ steps.catchup.outputs.updated }}
+          DELETED: ${{ steps.catchup.outputs.deleted }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import urllib.parse
+          import urllib.request
+
+          token = os.environ.get('TELEGRAM_BOT_TOKEN')
+          chat_id = os.environ.get('TELEGRAM_CHAT_ID')
+          if not token or not chat_id:
+              raise SystemExit('Scheduled catch-up found drift, but Telegram secrets are not configured')
+
+          text = (
+              "⚠️ monday-gcal catch-up fixed missed calendar changes\n"
+              f"Mon: JunkDoctors: created {os.environ['CREATED']}, "
+              f"updated {os.environ['UPDATED']}, deleted {os.environ['DELETED']}\n"
+              "This means the scheduled backup caught something the webhook path did not fully cover.\n"
+              f"Run: {os.environ['RUN_URL']}"
+          )
+          data = urllib.parse.urlencode({'chat_id': chat_id, 'text': text}).encode()
+          req = urllib.request.Request(f"https://api.telegram.org/bot{token}/sendMessage", data=data)
+          with urllib.request.urlopen(req, timeout=30) as r:
+              r.read()
+          PY
