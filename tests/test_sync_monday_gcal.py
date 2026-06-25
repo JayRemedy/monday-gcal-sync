@@ -34,7 +34,7 @@ class SyncMondayGcalTests(unittest.TestCase):
             "text": "Confirm payment clears before closing the task.",
             "url": "https://monday.com/items/123",
         })
-        self.assertIn("Task description:\nConfirm payment clears before closing the task.\nMonday item ID: 123", desc)
+        self.assertIn("Task description:\nConfirm payment clears before closing the task.\n\n\nMonday item ID: 123", desc)
 
 
 if __name__ == "__main__":
