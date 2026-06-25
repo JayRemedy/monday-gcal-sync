@@ -65,6 +65,35 @@ class SyncGcalMondayTests(unittest.TestCase):
             "time_value": None,
         }])
 
+    def test_sync_deleted_event_archives_matching_monday_item(self):
+        calls = []
+        event = {
+            "id": "event123",
+            "status": "cancelled",
+            "extendedProperties": {"private": {"source": mod.SOURCE, "mondayItemId": "item123", "mondayKind": "item"}},
+        }
+        with patch.object(mod, "archive_monday_item", side_effect=lambda item_id: calls.append(item_id)):
+            self.assertEqual(mod.sync_deleted_event(event), "archived_deleted")
+        self.assertEqual(calls, ["item123"])
+
+    def test_sync_deleted_event_skips_when_no_monday_item_id(self):
+        self.assertEqual(mod.sync_deleted_event({"id": "event123", "status": "cancelled"}), "skipped_deleted_missing_item_id")
+
+    def test_recently_deleted_monday_events_only_returns_cancelled_events(self):
+        gc = object.__new__(mod.GoogleCalendar)
+        calls = []
+        def fake_req(path, *, params=None, **kwargs):
+            calls.append(params)
+            return {"items": [
+                {"id": "deleted", "status": "cancelled"},
+                {"id": "active", "status": "confirmed"},
+            ]}
+        gc.req = fake_req
+        self.assertEqual(gc.recently_deleted_monday_events("cal123"), [{"id": "deleted", "status": "cancelled"}])
+        self.assertEqual(calls[0]["showDeleted"], "true")
+        self.assertIn("updatedMin", calls[0])
+        self.assertEqual(calls[0]["privateExtendedProperty"], f"source={mod.SOURCE}")
+
 
 if __name__ == "__main__":
     unittest.main()

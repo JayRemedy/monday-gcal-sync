@@ -31,6 +31,7 @@ SOURCE = os.environ.get("SYNC_SOURCE", f"monday_{BOARD_NAME.lower().replace(' ',
 GOOGLE_TIME_MIN = os.environ.get("GOOGLE_TIME_MIN", "2025-01-01T00:00:00Z")
 GOOGLE_TIME_MAX = os.environ.get("GOOGLE_TIME_MAX", "2032-12-31T23:59:59Z")
 DRY_RUN = os.environ.get("DRY_RUN", "").strip().lower() in {"1", "true", "yes"}
+DELETE_LOOKBACK_MINUTES = int(os.environ.get("GOOGLE_DELETE_LOOKBACK_MINUTES", "60"))
 
 
 class SyncError(RuntimeError):
@@ -136,6 +137,35 @@ class GoogleCalendar:
                 break
         return events
 
+    def recently_deleted_monday_events(self, cal_id: str) -> list[dict[str, Any]]:
+        """Return recently deleted script-owned mirror events.
+
+        The reverse sync runs from Google push notifications. Use a short
+        updatedMin window so old deleted mirror events cannot archive Monday
+        items during a later unrelated webhook/manual run.
+        """
+        events: list[dict[str, Any]] = []
+        updated_min = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(minutes=DELETE_LOOKBACK_MINUTES)).isoformat().replace("+00:00", "Z")
+        page_token = ""
+        while True:
+            params = {
+                "maxResults": "2500",
+                "showDeleted": "true",
+                "singleEvents": "true",
+                "updatedMin": updated_min,
+                "privateExtendedProperty": f"source={SOURCE}",
+            }
+            if page_token:
+                params["pageToken"] = page_token
+            data = self.req(f"/calendars/{urllib.parse.quote(cal_id, safe='')}/events", params=params)
+            for event in data.get("items", []):
+                if event.get("status") == "cancelled":
+                    events.append(event)
+            page_token = data.get("nextPageToken") or ""
+            if not page_token:
+                break
+        return events
+
 
 def parse_monday_date(value: str | None) -> tuple[str | None, str | None]:
     if not value:
@@ -211,6 +241,27 @@ def update_monday_date(*, item_id: str, board_id: str, column_id: str, date: str
     monday(q, {"board": board_id, "item": item_id, "column": column_id, "value": monday_date_value(date, time_value)})
 
 
+def archive_monday_item(item_id: str) -> None:
+    q = '''
+    mutation($item: ID!) {
+      archive_item(item_id: $item) { id }
+    }
+    '''
+    monday(q, {"item": item_id})
+
+
+def sync_deleted_event(event: dict[str, Any]) -> str:
+    props = ((event.get("extendedProperties") or {}).get("private") or {})
+    item_id = str(props.get("mondayItemId") or "").strip()
+    if not item_id:
+        return "skipped_deleted_missing_item_id"
+    if event.get("status") != "cancelled":
+        return "skipped_not_deleted"
+    if not DRY_RUN:
+        archive_monday_item(item_id)
+    return "would_archive_deleted" if DRY_RUN else "archived_deleted"
+
+
 def sync_event(event: dict[str, Any]) -> str:
     props = ((event.get("extendedProperties") or {}).get("private") or {})
     item_id = str(props.get("mondayItemId") or "").strip()
@@ -246,9 +297,13 @@ def main() -> None:
     gc = GoogleCalendar()
     cal_id = gc.calendar_id()
     events = gc.monday_events(cal_id)
+    deleted_events = gc.recently_deleted_monday_events(cal_id)
     counts: dict[str, int] = {}
     for event in events:
         result = sync_event(event)
+        counts[result] = counts.get(result, 0) + 1
+    for event in deleted_events:
+        result = sync_deleted_event(event)
         counts[result] = counts.get(result, 0) + 1
 
     output = {
@@ -256,6 +311,7 @@ def main() -> None:
         "board": BOARD_NAME,
         "dry_run": DRY_RUN,
         "events_checked": len(events),
+        "deleted_events_checked": len(deleted_events),
         **counts,
     }
     result_path = os.environ.get("REVERSE_SYNC_RESULT_PATH")
