@@ -1,0 +1,36 @@
+name: Register Google Calendar watch
+
+on:
+  workflow_dispatch:
+
+jobs:
+  register:
+    name: Register Calendar webhook watch
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Register Google Calendar watch
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+          GOOGLE_CALENDAR_NAME: ${{ vars.GOOGLE_CALENDAR_NAME }}
+          GOOGLE_CALENDAR_TIMEZONE: ${{ vars.GOOGLE_CALENDAR_TIMEZONE || 'America/New_York' }}
+          GOOGLE_WEBHOOK_URL: ${{ secrets.GOOGLE_WEBHOOK_URL }}
+          GOOGLE_CHANNEL_TOKEN: ${{ secrets.GOOGLE_CHANNEL_TOKEN }}
+          GOOGLE_WATCH_RESULT_PATH: google-watch-result.json
+        run: python3 scripts/register_google_calendar_watch.py
+
+      - name: Upload watch registration result
+        uses: actions/upload-artifact@v4
+        with:
+          name: google-watch-result
+          path: google-watch-result.json
