@@ -175,6 +175,27 @@ def status_text(cvs: list[dict[str, Any]]) -> str:
     return ""
 
 
+def task_text(cvs: list[dict[str, Any]]) -> str:
+    """Return the human task-description text from Monday text columns.
+
+    The JunkDoctors board has generic `Text` columns plus separate URL/Email
+    columns. Calendar descriptions should show the human task note, not duplicate
+    link/email metadata.
+    """
+    chunks: list[str] = []
+    for cv in cvs:
+        typ = cv.get("type")
+        if typ not in {"text", "long_text"}:
+            continue
+        title = (((cv.get("column") or {}).get("title") or "").strip().lower())
+        if title in {"url", "link", "email", "e-mail"}:
+            continue
+        text = (cv.get("text") or "").strip()
+        if text:
+            chunks.append(text)
+    return "\n\n".join(chunks)
+
+
 def is_done_status(status: str | None) -> bool:
     return (status or "").strip().lower() in {"done", "complete", "completed"}
 
@@ -197,13 +218,13 @@ def collect_tasks() -> list[dict[str, Any]]:
             name
             url
             group { id title }
-            column_values { id type text value }
+            column_values { id type text value column { title } }
             subitems {
               id
               name
               url
               board { id name }
-              column_values { id type text value }
+              column_values { id type text value column { title } }
             }
           }
         }
@@ -227,6 +248,7 @@ def collect_tasks() -> list[dict[str, Any]]:
             tasks.append({
                 "id": str(item["id"]), "summary": item["name"], "date": date, "time": due_time,
                 "url": item.get("url") or "", "group": group, "status": parent_status, "kind": "item",
+                "text": task_text(cvs),
             })
         for sub in item.get("subitems") or []:
             scvs = sub.get("column_values") or []
@@ -246,6 +268,7 @@ def collect_tasks() -> list[dict[str, Any]]:
                     "url": sub.get("url") or "",
                     "group": group,
                     "status": effective_subitem_status(sub_status, parent_status),
+                    "text": task_text(scvs),
                     "subitem_status": sub_status,
                     "parent_status": parent_status,
                     "kind": "subitem",
@@ -279,6 +302,8 @@ def task_description(t: dict[str, Any]) -> str:
     if t.get("parent_status") and t.get("subitem_status") and t.get("parent_status") != t.get("subitem_status"):
         lines.append(f"Parent status: {t['parent_status']}")
         lines.append(f"Subitem status: {t['subitem_status']}")
+    if t.get("text"):
+        lines.extend(["", "Task description:", str(t["text"]).strip()])
     lines.append(f"Monday item ID: {t['id']}")
     if t.get("url"):
         lines.extend(["", "Open in Monday:", t["url"]])
