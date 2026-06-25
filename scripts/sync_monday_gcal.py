@@ -290,6 +290,13 @@ def status_color(status: str | None) -> str:
     return "9"  # blue
 
 
+def calendar_summary(t: dict[str, Any]) -> str:
+    summary = t["summary"]
+    if (t.get("group") or "").strip().lower() == "bugs" and not summary.lower().startswith("bug:"):
+        return f"Bug: {summary}"
+    return summary
+
+
 def task_description(t: dict[str, Any]) -> str:
     lines = [
         f"Source: monday.com → {BOARD_NAME}",
@@ -303,10 +310,8 @@ def task_description(t: dict[str, Any]) -> str:
         lines.append(f"Parent status: {t['parent_status']}")
         lines.append(f"Subitem status: {t['subitem_status']}")
     if t.get("text"):
-        # Keep source metadata visibly separated after the human task note.
-        # Google Calendar renders two newline characters as one blank line, so
-        # add two empty list entries before the following "Monday item ID" line.
-        lines.extend(["", "Task description:", str(t["text"]).strip(), "", ""])
+        # Keep the ID immediately after text; Calendar already adds vertical spacing.
+        lines.extend(["", "Task description:", str(t["text"]).strip()])
     lines.append(f"Monday item ID: {t['id']}")
     if t.get("url"):
         lines.extend(["", "Open in Monday:", t["url"]])
@@ -326,7 +331,7 @@ def event_times(t: dict[str, Any]) -> dict[str, dict[str, str]]:
 
 def event_body(t: dict[str, Any]) -> dict[str, Any]:
     body = {
-        "summary": t["summary"],
+        "summary": calendar_summary(t),
         "description": task_description(t),
         "colorId": status_color(t.get("status")),
         "transparency": "transparent",
