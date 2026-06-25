@@ -303,7 +303,10 @@ def task_description(t: dict[str, Any]) -> str:
         lines.append(f"Parent status: {t['parent_status']}")
         lines.append(f"Subitem status: {t['subitem_status']}")
     if t.get("text"):
-        lines.extend(["", "Task description:", str(t["text"]).strip()])
+        # Keep source metadata visibly separated after the human task note.
+        # Google Calendar renders two newline characters as one blank line, so
+        # add two empty list entries before the following "Monday item ID" line.
+        lines.extend(["", "Task description:", str(t["text"]).strip(), "", ""])
     lines.append(f"Monday item ID: {t['id']}")
     if t.get("url"):
         lines.extend(["", "Open in Monday:", t["url"]])
