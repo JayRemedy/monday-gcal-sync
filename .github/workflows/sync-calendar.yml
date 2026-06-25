@@ -2,7 +2,7 @@ name: Sync Monday to Google Calendar
 
 on:
   repository_dispatch:
-    types: [monday_webhook]
+    types: [monday_webhook, google_calendar_webhook]
   workflow_dispatch:
   schedule:
     # Backup catch-up sync in case any webhook dispatch is missed.
@@ -25,6 +25,20 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
+      - name: Apply Google Calendar moves back to Monday
+        if: ${{ github.event_name == 'repository_dispatch' && github.event.action == 'google_calendar_webhook' }}
+        env:
+          MONDAY_API_TOKEN: ${{ secrets.MONDAY_API_TOKEN }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+          MONDAY_BOARD_ID: ${{ vars.MONDAY_BOARD_ID }}
+          MONDAY_BOARD_NAME: ${{ vars.MONDAY_BOARD_NAME }}
+          GOOGLE_CALENDAR_NAME: ${{ vars.GOOGLE_CALENDAR_NAME }}
+          GOOGLE_CALENDAR_TIMEZONE: ${{ vars.GOOGLE_CALENDAR_TIMEZONE || 'America/New_York' }}
+          REVERSE_SYNC_RESULT_PATH: reverse-sync-result.json
+        run: python3 scripts/sync_gcal_monday.py
 
       - name: Run Monday → Google Calendar sync
         env:

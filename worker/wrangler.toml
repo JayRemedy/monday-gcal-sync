@@ -9,8 +9,12 @@ GITHUB_REPO = "monday-gcal-sync"
 MONDAY_BOARD_IDS = "1234567890"
 # Set this to a generated hard-to-guess path before production.
 WEBHOOK_PATH = "/monday-gcal-example"
+# Optional Google Calendar webhook path for calendar move → Monday date sync.
+GOOGLE_WEBHOOK_PATH = "/google-gcal-example"
 
 # Secrets to set with wrangler:
 # wrangler secret put GITHUB_DISPATCH_TOKEN
 # Optional hardening if you proxy/customize inbound calls:
 # wrangler secret put INBOUND_SECRET
+# Optional: match the Google events.watch channel token:
+# wrangler secret put GOOGLE_CHANNEL_TOKEN

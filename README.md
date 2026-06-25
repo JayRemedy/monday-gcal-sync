@@ -10,6 +10,13 @@ monday.com webhook
 → GitHub repository_dispatch
 → GitHub Actions sync job
 → Google Calendar
+
+Google Calendar event move
+→ Google Calendar push notification
+→ Cloudflare Worker
+→ GitHub repository_dispatch
+→ GitHub Actions reverse sync job
+→ monday.com due date
 ```
 
 This avoids depending on a personal computer or a business VPS. Secrets live in GitHub Actions secrets and Cloudflare Worker secrets, not in source control.
@@ -33,6 +40,7 @@ Event shape:
 Important behavior:
 
 - If a parent item is marked `Done`, dated subitems inherit `Done` in Google Calendar even if the subitem's own status still says `Working on it`.
+- If a script-owned Google Calendar mirror event is moved to another day/time, the reverse sync updates that Monday item's date column. It does not update titles, statuses, owners, notes, or non-mirrored calendar events.
 
 ## Repository secrets for GitHub Actions
 
@@ -44,6 +52,8 @@ Set these in GitHub repository settings → Secrets and variables → Actions:
 - `GOOGLE_REFRESH_TOKEN`
 - `TELEGRAM_BOT_TOKEN` optional, for catch-up drift alerts
 - `TELEGRAM_CHAT_ID` optional, for catch-up drift alerts
+- `GOOGLE_WEBHOOK_URL` optional, for registering Calendar move notifications. Use the deployed Worker URL plus `GOOGLE_WEBHOOK_PATH`.
+- `GOOGLE_CHANNEL_TOKEN` optional, shared token for Google Calendar push notifications.
 
 Repository variables:
 
@@ -69,8 +79,9 @@ Configured in `worker/wrangler.toml`:
 - `GITHUB_REPO=monday-gcal-sync`
 - `MONDAY_BOARD_IDS=1234567890` — comma-separated if monday.com subitem webhooks report a separate subitems board ID
 - `WEBHOOK_PATH=/monday-gcal-example`
+- optional `GOOGLE_WEBHOOK_PATH=/google-gcal-example` — path for Google Calendar event-change notifications
 
-Before production, change `WEBHOOK_PATH` to a generated hard-to-guess path.
+Before production, change `WEBHOOK_PATH` and `GOOGLE_WEBHOOK_PATH` to generated hard-to-guess paths.
 
 ## Deploy Worker
 
@@ -90,12 +101,22 @@ wrangler deploy
 
 Use the deployed Worker URL plus `WEBHOOK_PATH` as the monday.com webhook URL.
 
+## Register Google Calendar move notifications
+
+After deploying the Worker with `GOOGLE_WEBHOOK_PATH`, set these GitHub Actions secrets:
+
+- `GOOGLE_WEBHOOK_URL` — deployed Worker URL plus the configured `GOOGLE_WEBHOOK_PATH`
+- optional `GOOGLE_CHANNEL_TOKEN` — same value as the Worker secret if you want token checking
+
+Then run the manual **Register Google Calendar watch** workflow. Google push channels expire, so re-run this workflow periodically or after changing the webhook URL. The reverse sync still only writes date/time changes for events carrying this repo's private Monday metadata.
+
 ## Local test
 
 Run syntax check:
 
 ```bash
-python3 -m py_compile scripts/sync_monday_gcal.py
+python3 -m py_compile scripts/sync_monday_gcal.py scripts/sync_gcal_monday.py scripts/register_google_calendar_watch.py
+python3 -m unittest discover -s tests
 ```
 
 Run a sync with env vars loaded:

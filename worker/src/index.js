@@ -9,6 +9,25 @@ export default {
     }
 
     const url = new URL(request.url);
+
+    if (env.GOOGLE_WEBHOOK_PATH && url.pathname === env.GOOGLE_WEBHOOK_PATH) {
+      const expectedToken = env.GOOGLE_CHANNEL_TOKEN || '';
+      const gotToken = request.headers.get('x-goog-channel-token') || url.searchParams.get('secret') || '';
+      if (expectedToken && gotToken !== expectedToken) {
+        return json({ error: 'unauthorized' }, 401);
+      }
+      ctx.waitUntil(dispatchGitHub(env, {
+        event_type: 'google_calendar_webhook',
+        client_payload: {
+          received_at: new Date().toISOString(),
+          google_resource_state: request.headers.get('x-goog-resource-state') || '',
+          google_resource_id: request.headers.get('x-goog-resource-id') || '',
+          google_channel_id: request.headers.get('x-goog-channel-id') || '',
+        },
+      }));
+      return json({ ok: true, dispatched: true, source: 'google_calendar' });
+    }
+
     if (env.WEBHOOK_PATH && url.pathname !== env.WEBHOOK_PATH) {
       return json({ error: 'not found' }, 404);
     }
@@ -45,12 +64,20 @@ export default {
       }
     }
 
-    ctx.waitUntil(dispatchGitHub(env, payload));
+    ctx.waitUntil(dispatchGitHub(env, {
+      event_type: 'monday_webhook',
+      client_payload: {
+        received_at: new Date().toISOString(),
+        monday_event_type: payload?.event?.type || payload?.type || 'unknown',
+        board_id: payload?.event?.boardId || payload?.event?.board_id || '',
+        pulse_id: payload?.event?.pulseId || payload?.event?.itemId || payload?.event?.pulse_id || '',
+      },
+    }));
     return json({ ok: true, dispatched: true });
   },
 };
 
-async function dispatchGitHub(env, payload) {
+async function dispatchGitHub(env, dispatch) {
   const owner = required(env, 'GITHUB_OWNER');
   const repo = required(env, 'GITHUB_REPO');
   const token = required(env, 'GITHUB_DISPATCH_TOKEN');
@@ -64,15 +91,7 @@ async function dispatchGitHub(env, payload) {
       'User-Agent': 'monday-gcal-cloudflare-worker',
       'X-GitHub-Api-Version': '2022-11-28',
     },
-    body: JSON.stringify({
-      event_type: 'monday_webhook',
-      client_payload: {
-        received_at: new Date().toISOString(),
-        monday_event_type: payload?.event?.type || payload?.type || 'unknown',
-        board_id: payload?.event?.boardId || payload?.event?.board_id || '',
-        pulse_id: payload?.event?.pulseId || payload?.event?.itemId || payload?.event?.pulse_id || '',
-      },
-    }),
+    body: JSON.stringify(dispatch),
   });
   if (!res.ok) {
     const text = await res.text();
