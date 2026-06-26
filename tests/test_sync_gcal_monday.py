@@ -79,6 +79,18 @@ class SyncGcalMondayTests(unittest.TestCase):
     def test_sync_deleted_event_skips_when_no_monday_item_id(self):
         self.assertEqual(mod.sync_deleted_event({"id": "event123", "status": "cancelled"}), "skipped_deleted_missing_item_id")
 
+    def test_monday_events_can_be_limited_to_recently_updated_events(self):
+        gc = object.__new__(mod.GoogleCalendar)
+        calls = []
+        def fake_req(path, *, params=None, **kwargs):
+            calls.append(params)
+            return {"items": [{"id": "active", "status": "confirmed"}]}
+        gc.req = fake_req
+        self.assertEqual(gc.monday_events("cal123", updated_min="2026-06-26T12:00:00Z"), [{"id": "active", "status": "confirmed"}])
+        self.assertEqual(calls[0]["updatedMin"], "2026-06-26T12:00:00Z")
+        self.assertEqual(calls[0]["showDeleted"], "false")
+        self.assertEqual(calls[0]["privateExtendedProperty"], f"source={mod.SOURCE}")
+
     def test_recently_deleted_monday_events_only_returns_cancelled_events(self):
         gc = object.__new__(mod.GoogleCalendar)
         calls = []

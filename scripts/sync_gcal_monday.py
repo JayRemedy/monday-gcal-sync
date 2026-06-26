@@ -31,6 +31,7 @@ SOURCE = os.environ.get("SYNC_SOURCE", f"monday_{BOARD_NAME.lower().replace(' ',
 GOOGLE_TIME_MIN = os.environ.get("GOOGLE_TIME_MIN", "2025-01-01T00:00:00Z")
 GOOGLE_TIME_MAX = os.environ.get("GOOGLE_TIME_MAX", "2032-12-31T23:59:59Z")
 DRY_RUN = os.environ.get("DRY_RUN", "").strip().lower() in {"1", "true", "yes"}
+REVERSE_LOOKBACK_MINUTES = int(os.environ.get("GOOGLE_REVERSE_LOOKBACK_MINUTES", "10"))
 DELETE_LOOKBACK_MINUTES = int(os.environ.get("GOOGLE_DELETE_LOOKBACK_MINUTES", "60"))
 
 
@@ -116,7 +117,11 @@ class GoogleCalendar:
                 break
         raise SyncError(f"Google Calendar not found: {CALENDAR_NAME}")
 
-    def monday_events(self, cal_id: str) -> list[dict[str, Any]]:
+    @staticmethod
+    def updated_min(minutes: int) -> str:
+        return (dt.datetime.now(dt.timezone.utc) - dt.timedelta(minutes=minutes)).isoformat().replace("+00:00", "Z")
+
+    def monday_events(self, cal_id: str, *, updated_min: str | None = None) -> list[dict[str, Any]]:
         events: list[dict[str, Any]] = []
         page_token = ""
         while True:
@@ -128,6 +133,8 @@ class GoogleCalendar:
                 "singleEvents": "true",
                 "privateExtendedProperty": f"source={SOURCE}",
             }
+            if updated_min:
+                params["updatedMin"] = updated_min
             if page_token:
                 params["pageToken"] = page_token
             data = self.req(f"/calendars/{urllib.parse.quote(cal_id, safe='')}/events", params=params)
@@ -145,7 +152,7 @@ class GoogleCalendar:
         items during a later unrelated webhook/manual run.
         """
         events: list[dict[str, Any]] = []
-        updated_min = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(minutes=DELETE_LOOKBACK_MINUTES)).isoformat().replace("+00:00", "Z")
+        updated_min = self.updated_min(DELETE_LOOKBACK_MINUTES)
         page_token = ""
         while True:
             params = {
@@ -296,7 +303,12 @@ def sync_event(event: dict[str, Any]) -> str:
 def main() -> None:
     gc = GoogleCalendar()
     cal_id = gc.calendar_id()
-    events = gc.monday_events(cal_id)
+    # Google push notifications identify that something changed on the calendar,
+    # but not which event changed. Do not scan every mirrored event here: an
+    # unrelated webhook would otherwise replay stale Calendar dates back into
+    # Monday and undo manual Monday date edits. Only inspect mirror events that
+    # Google says were updated recently.
+    events = gc.monday_events(cal_id, updated_min=gc.updated_min(REVERSE_LOOKBACK_MINUTES))
     deleted_events = gc.recently_deleted_monday_events(cal_id)
     counts: dict[str, int] = {}
     for event in events:
