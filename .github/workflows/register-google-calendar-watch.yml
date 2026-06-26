@@ -1,7 +1,10 @@
-name: Register Google Calendar watch
+name: Renew Google Calendar watch
 
 on:
   workflow_dispatch:
+  schedule:
+    # Google Calendar push channels expire; renew the watch daily.
+    - cron: '17 9 * * *'
 
 jobs:
   register:
