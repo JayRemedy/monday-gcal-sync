@@ -28,7 +28,7 @@ The sync reads dated items and subitems from a configured monday.com board and m
 Event shape:
 
 - summary: monday item/subitem title
-- description: board, group, status, parent/subitem status, Monday Text/Notes content when present, Monday item ID, direct Monday link
+- description: board, group, status, parent/subitem status, Monday Text/Notes content when present, user-entered Monday URL/link columns, Monday item ID, direct Monday link
 - transparency: free/transparent
 - color: based on status
   - Done: green
@@ -42,6 +42,7 @@ Important behavior:
 - If a parent item is marked `Done`, dated subitems inherit `Done` in Google Calendar even if the subitem's own status still says `Working on it`.
 - If a script-owned Google Calendar mirror event is moved to another day/time, the reverse sync updates that Monday item's date column. It does not update titles, statuses, owners, notes, or non-mirrored calendar events.
 - If a dated Monday item/subitem has a blank human `Text` field, `scripts/suggest_monday_task_descriptions.py` can prepare an approval queue and then write approved wording back to Monday. The next Monday → Google sync carries that text into the Calendar event description.
+- If a dated Monday item/subitem has a user-entered `URL`/link column value, the next Monday → Google sync includes it in the Calendar event description before the Monday item link.
 
 ## Repository secrets for GitHub Actions
 

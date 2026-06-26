@@ -197,6 +197,44 @@ def task_text(cvs: list[dict[str, Any]]) -> str:
     return "\n\n".join(chunks)
 
 
+def task_urls(cvs: list[dict[str, Any]]) -> list[str]:
+    """Return user-entered URL/link column values from Monday column values.
+
+    These are separate from the built-in Monday item URL. They should appear in
+    Google Calendar so a mirrored task can open the underlying repo/doc/system
+    directly without first opening Monday.
+    """
+    urls: list[str] = []
+    seen: set[str] = set()
+    for cv in cvs:
+        title = (((cv.get("column") or {}).get("title") or "").strip().lower())
+        typ = cv.get("type")
+        if title not in {"url", "link", "links"} and typ != "link":
+            continue
+
+        candidates: list[str] = []
+        raw_value = cv.get("value")
+        if raw_value:
+            try:
+                parsed = json.loads(raw_value)
+                if isinstance(parsed, dict):
+                    for key in ("url", "link"):
+                        if parsed.get(key):
+                            candidates.append(str(parsed[key]).strip())
+            except Exception:
+                pass
+
+        text = (cv.get("text") or "").strip()
+        if text.startswith(("http://", "https://")):
+            candidates.append(text)
+
+        for candidate in candidates:
+            if candidate and candidate not in seen:
+                seen.add(candidate)
+                urls.append(candidate)
+    return urls
+
+
 def is_done_status(status: str | None) -> bool:
     return (status or "").strip().lower() in {"done", "complete", "completed"}
 
@@ -250,6 +288,7 @@ def collect_tasks() -> list[dict[str, Any]]:
                 "id": str(item["id"]), "summary": item["name"], "date": date, "time": due_time,
                 "url": item.get("url") or "", "group": group, "status": parent_status, "kind": "item",
                 "text": task_text(cvs),
+                "task_urls": task_urls(cvs),
             })
         for sub in item.get("subitems") or []:
             scvs = sub.get("column_values") or []
@@ -270,6 +309,7 @@ def collect_tasks() -> list[dict[str, Any]]:
                     "group": group,
                     "status": effective_subitem_status(sub_status, parent_status),
                     "text": task_text(scvs),
+                    "task_urls": task_urls(scvs),
                     "subitem_status": sub_status,
                     "parent_status": parent_status,
                     "kind": "subitem",
@@ -312,8 +352,14 @@ def task_description(t: dict[str, Any]) -> str:
         lines.append(f"Subitem status: {t['subitem_status']}")
     if t.get("text"):
         # Keep one empty line after the task-description body so Google Calendar
-        # visually separates the description from the Monday item ID.
-        lines.extend(["", "Task description:", str(t["text"]).strip(), ""])
+        # visually separates the description from the next metadata block.
+        lines.extend(["", "Task description:", str(t["text"]).strip()])
+    task_urls = [str(u).strip() for u in (t.get("task_urls") or []) if str(u).strip()]
+    if task_urls:
+        lines.extend(["", "URL:"])
+        lines.extend(task_urls)
+    elif t.get("text"):
+        lines.append("")
     lines.append(f"Monday item ID: {t['id']}")
     if t.get("url"):
         lines.extend(["", "Open in Monday:", t["url"]])

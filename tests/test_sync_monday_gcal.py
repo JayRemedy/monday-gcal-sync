@@ -25,6 +25,14 @@ class SyncMondayGcalTests(unittest.TestCase):
         ]
         self.assertEqual(mod.task_text(cvs), "Call vendor\n\nBring account number")
 
+    def test_task_urls_extracts_url_column_values(self):
+        cvs = [
+            {"id": "text", "type": "text", "text": "Call vendor", "column": {"title": "Text"}},
+            {"id": "url", "type": "text", "text": "https://example.com/repo", "column": {"title": "URL"}},
+            {"id": "link", "type": "link", "text": "Example", "value": '{"url":"https://example.com/doc","text":"Example"}', "column": {"title": "Link"}},
+        ]
+        self.assertEqual(mod.task_urls(cvs), ["https://example.com/repo", "https://example.com/doc"])
+
     def test_task_description_includes_task_text_before_monday_id(self):
         desc = mod.task_description({
             "id": "123",
@@ -32,9 +40,10 @@ class SyncMondayGcalTests(unittest.TestCase):
             "status": "Not Started",
             "kind": "item",
             "text": "Confirm payment clears before closing the task.",
+            "task_urls": ["https://example.com/repo"],
             "url": "https://monday.com/items/123",
         })
-        self.assertIn("Task description:\nConfirm payment clears before closing the task.\n\nMonday item ID: 123", desc)
+        self.assertIn("Task description:\nConfirm payment clears before closing the task.\n\nURL:\nhttps://example.com/repo\nMonday item ID: 123", desc)
 
     def test_bug_group_prefixes_calendar_summary(self):
         self.assertEqual(
