@@ -34,7 +34,7 @@ class SyncMondayGcalTests(unittest.TestCase):
             "text": "Confirm payment clears before closing the task.",
             "url": "https://monday.com/items/123",
         })
-        self.assertIn("Task description:\nConfirm payment clears before closing the task.\nMonday item ID: 123", desc)
+        self.assertIn("Task description:\nConfirm payment clears before closing the task.\n\nMonday item ID: 123", desc)
 
     def test_bug_group_prefixes_calendar_summary(self):
         self.assertEqual(

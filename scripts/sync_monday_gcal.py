@@ -310,8 +310,9 @@ def task_description(t: dict[str, Any]) -> str:
         lines.append(f"Parent status: {t['parent_status']}")
         lines.append(f"Subitem status: {t['subitem_status']}")
     if t.get("text"):
-        # Keep the ID immediately after text; Calendar already adds vertical spacing.
-        lines.extend(["", "Task description:", str(t["text"]).strip()])
+        # Keep one empty line after the task-description body so Google Calendar
+        # visually separates the description from the Monday item ID.
+        lines.extend(["", "Task description:", str(t["text"]).strip(), ""])
     lines.append(f"Monday item ID: {t['id']}")
     if t.get("url"):
         lines.extend(["", "Open in Monday:", t["url"]])
