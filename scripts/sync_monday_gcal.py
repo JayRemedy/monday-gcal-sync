@@ -321,16 +321,16 @@ def collect_tasks() -> list[dict[str, Any]]:
 def status_color(status: str | None) -> str:
     s = (status or "").strip().lower()
     if s in {"done", "complete", "completed"}:
-        return "10"  # green / basil
+        return "10"  # basil
     if "stuck" in s or "block" in s or "problem" in s:
-        return "11"  # red / tomato
-    if "working" in s or "progress" in s or "doing" in s:
-        return "6"  # orange / tangerine
+        return "11"  # tomato
+    if not s or "working" in s or "progress" in s or "doing" in s:
+        return "9"  # blueberry
     if "not started" in s or s in {"todo", "to do"}:
-        return "8"  # gray / graphite
+        return "8"  # graphite
     if "wait" in s or "hold" in s or "later" in s:
-        return "5"  # yellow / banana
-    return "9"  # blue / default
+        return "5"  # banana
+    return "9"  # blueberry fallback
 
 
 def calendar_summary(t: dict[str, Any]) -> str:

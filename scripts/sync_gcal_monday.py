@@ -34,14 +34,14 @@ DRY_RUN = os.environ.get("DRY_RUN", "").strip().lower() in {"1", "true", "yes"}
 REVERSE_LOOKBACK_MINUTES = int(os.environ.get("GOOGLE_REVERSE_LOOKBACK_MINUTES", "10"))
 DELETE_LOOKBACK_MINUTES = int(os.environ.get("GOOGLE_DELETE_LOOKBACK_MINUTES", "60"))
 
-# Explicit Google Calendar event color commands for monday.com Status. Color 9
-# (blue/default in the forward sync) is intentionally not a command so ordinary
-# date moves on existing mirror events do not accidentally rewrite statuses.
+# Explicit Google Calendar event color commands for monday.com Status.
+# Google color IDs: 9=blueberry, 10=basil, 11=tomato. John wants
+# blank/Working on it shown as blueberry, not tangerine/orange.
 DEFAULT_COLOR_STATUS_MAP = {
-    "10": "Done",          # green / basil
-    "6": "Working on it",  # orange / tangerine
-    "11": "Stuck",        # red / tomato
-    "8": "Not Started",   # gray / graphite
+    "9": "Working on it",  # blueberry
+    "10": "Done",         # basil
+    "11": "Stuck",        # tomato
+    "8": "Not Started",   # graphite
 }
 
 

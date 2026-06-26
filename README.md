@@ -31,20 +31,19 @@ Event shape:
 - description: board, group, status, parent/subitem status, Monday Text/Notes content when present, user-entered Monday URL/link columns, Monday item ID, direct Monday link
 - transparency: free/transparent
 - color: based on status
-  - Done: green
-  - Working/in progress: orange
-  - Blocked/stuck/problem: red
-  - Not Started: gray
-  - Waiting/hold/later: yellow
-  - Project/unknown/no status: blue
+  - Done: basil
+  - Working/in progress/blank/no status: blueberry
+  - Blocked/stuck/problem: tomato
+  - Not Started: graphite
+  - Waiting/hold/later: banana
+  - Project/unknown: blueberry
 
 Google Calendar color controls for reverse status sync:
 
-- green → `Done`
-- orange → `Working on it`
-- red → `Stuck`
-- gray → `Not Started`
-- blue is intentionally not a command, so moving existing/default-blue events does not accidentally rewrite monday.com statuses.
+- blueberry → `Working on it`
+- basil → `Done`
+- tomato → `Stuck`
+- graphite → `Not Started`
 
 Important behavior:
 
