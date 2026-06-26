@@ -50,6 +50,7 @@ class SyncGcalMondayTests(unittest.TestCase):
         }
         event = {
             "id": "event123",
+            "colorId": "6",
             "start": {"date": "2026-06-25"},
             "extendedProperties": {"private": {"source": mod.SOURCE, "mondayItemId": "item123", "mondayKind": "item"}},
         }
@@ -66,11 +67,12 @@ class SyncGcalMondayTests(unittest.TestCase):
         }])
 
     def test_color_id_maps_to_status_command(self):
-        self.assertEqual(mod.desired_status_from_event({"colorId": "9"}), "Working on it")
+        self.assertEqual(mod.desired_status_from_event({}), "Working on it")
+        self.assertEqual(mod.desired_status_from_event({"colorId": "9"}), "Not Started")
         self.assertEqual(mod.desired_status_from_event({"colorId": "10"}), "Done")
         self.assertIsNone(mod.desired_status_from_event({"colorId": "6"}))
         self.assertEqual(mod.desired_status_from_event({"colorId": "11"}), "Stuck")
-        self.assertEqual(mod.desired_status_from_event({"colorId": "8"}), "Not Started")
+        self.assertEqual(mod.desired_status_from_event({"colorId": "8"}), "Cancelled")
 
     def test_sync_event_updates_status_from_calendar_color(self):
         status_calls = []
@@ -116,7 +118,6 @@ class SyncGcalMondayTests(unittest.TestCase):
         }
         event = {
             "id": "event123",
-            "colorId": "9",
             "start": {"date": "2026-06-25"},
             "extendedProperties": {"private": {"source": mod.SOURCE, "mondayItemId": "item123", "mondayKind": "item"}},
         }
