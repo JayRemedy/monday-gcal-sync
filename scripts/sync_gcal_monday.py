@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Sync moved Google Calendar mirror events back into monday.com due dates.
+"""Sync Google Calendar mirror event edits back into monday.com.
 
-This is intentionally narrow: Google Calendar can update the date/time of
-script-owned mirror events, while monday.com remains the source of truth for
-names, statuses, owners, and descriptions.
+Google Calendar can update the date/time of script-owned mirror events. It can
+also update monday.com status through explicit event colors so Calendar remains
+a lightweight command surface without touching random non-mirror events.
 """
 from __future__ import annotations
 
@@ -33,6 +33,16 @@ GOOGLE_TIME_MAX = os.environ.get("GOOGLE_TIME_MAX", "2032-12-31T23:59:59Z")
 DRY_RUN = os.environ.get("DRY_RUN", "").strip().lower() in {"1", "true", "yes"}
 REVERSE_LOOKBACK_MINUTES = int(os.environ.get("GOOGLE_REVERSE_LOOKBACK_MINUTES", "10"))
 DELETE_LOOKBACK_MINUTES = int(os.environ.get("GOOGLE_DELETE_LOOKBACK_MINUTES", "60"))
+
+# Explicit Google Calendar event color commands for monday.com Status. Color 9
+# (blue/default in the forward sync) is intentionally not a command so ordinary
+# date moves on existing mirror events do not accidentally rewrite statuses.
+DEFAULT_COLOR_STATUS_MAP = {
+    "10": "Done",          # green / basil
+    "6": "Working on it",  # orange / tangerine
+    "11": "Stuck",        # red / tomato
+    "8": "Not Started",   # gray / graphite
+}
 
 
 class SyncError(RuntimeError):
@@ -212,6 +222,36 @@ def monday_date_value(date: str, time_value: str | None) -> str:
     return json.dumps(payload, separators=(",", ":"))
 
 
+def load_color_status_map() -> dict[str, str]:
+    """Return Google Calendar colorId -> monday.com status label commands.
+
+    Override with GOOGLE_COLOR_STATUS_MAP as JSON, e.g.
+    {"10":"Done","6":"Working on it","11":"Stuck","8":"Not Started"}.
+    Passing an empty string value disables a color.
+    """
+    raw = os.environ.get("GOOGLE_COLOR_STATUS_MAP")
+    if not raw:
+        return dict(DEFAULT_COLOR_STATUS_MAP)
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise SyncError("GOOGLE_COLOR_STATUS_MAP must be valid JSON") from exc
+    if not isinstance(parsed, dict):
+        raise SyncError("GOOGLE_COLOR_STATUS_MAP must be a JSON object")
+    return {str(color): str(label).strip() for color, label in parsed.items() if str(label).strip()}
+
+
+def desired_status_from_event(event: dict[str, Any]) -> str | None:
+    color_id = str(event.get("colorId") or "").strip()
+    if not color_id:
+        return None
+    return load_color_status_map().get(color_id)
+
+
+def statuses_match(current: str | None, desired: str | None) -> bool:
+    return (current or "").strip().casefold() == (desired or "").strip().casefold()
+
+
 def get_monday_item(item_id: str) -> dict[str, Any] | None:
     q = '''
     query($ids: [ID!]) {
@@ -239,6 +279,17 @@ def pick_date_column(item: dict[str, Any], kind: str | None) -> dict[str, Any] |
     return date_columns[0] if date_columns else None
 
 
+def pick_status_column(item: dict[str, Any], kind: str | None) -> dict[str, Any] | None:
+    configured = os.environ.get("MONDAY_SUBITEM_STATUS_COLUMN_ID" if kind == "subitem" else "MONDAY_STATUS_COLUMN_ID")
+    status_columns = [cv for cv in item.get("column_values") or [] if cv.get("type") == "status"]
+    if configured:
+        for cv in status_columns:
+            if cv.get("id") == configured:
+                return cv
+        raise SyncError(f"Configured status column {configured!r} not found on monday item {item.get('id')}")
+    return status_columns[0] if status_columns else None
+
+
 def update_monday_date(*, item_id: str, board_id: str, column_id: str, date: str, time_value: str | None) -> None:
     q = '''
     mutation($board: ID!, $item: ID!, $column: String!, $value: JSON!) {
@@ -246,6 +297,15 @@ def update_monday_date(*, item_id: str, board_id: str, column_id: str, date: str
     }
     '''
     monday(q, {"board": board_id, "item": item_id, "column": column_id, "value": monday_date_value(date, time_value)})
+
+
+def update_monday_status(*, item_id: str, board_id: str, column_id: str, status: str) -> None:
+    q = '''
+    mutation($board: ID!, $item: ID!, $column: String!, $value: String!) {
+      change_simple_column_value(board_id: $board, item_id: $item, column_id: $column, value: $value) { id }
+    }
+    '''
+    monday(q, {"board": board_id, "item": item_id, "column": column_id, "value": status})
 
 
 def archive_monday_item(item_id: str) -> None:
@@ -277,27 +337,49 @@ def sync_event(event: dict[str, Any]) -> str:
         return "skipped_missing_item_id"
 
     desired_date, desired_time = event_date_time(event)
+    desired_status = desired_status_from_event(event)
     item = get_monday_item(item_id)
     if not item:
         return "skipped_missing_monday_item"
-    date_column = pick_date_column(item, kind)
-    if not date_column:
-        return "skipped_no_date_column"
-
-    current_date, current_time = parse_monday_date(date_column.get("value"))
-    if current_date == desired_date and current_time == desired_time:
-        return "unchanged"
 
     item_board_id = str((item.get("board") or {}).get("id") or props.get("mondayBoardId") or BOARD_ID)
-    if not DRY_RUN:
-        update_monday_date(
-            item_id=item_id,
-            board_id=item_board_id,
-            column_id=str(date_column["id"]),
-            date=desired_date,
-            time_value=desired_time,
-        )
-    return "would_update" if DRY_RUN else "updated"
+    results: list[str] = []
+
+    date_column = pick_date_column(item, kind)
+    if date_column:
+        current_date, current_time = parse_monday_date(date_column.get("value"))
+        if current_date != desired_date or current_time != desired_time:
+            if not DRY_RUN:
+                update_monday_date(
+                    item_id=item_id,
+                    board_id=item_board_id,
+                    column_id=str(date_column["id"]),
+                    date=desired_date,
+                    time_value=desired_time,
+                )
+            results.append("would_update_date" if DRY_RUN else "updated_date")
+    else:
+        results.append("skipped_no_date_column")
+
+    if desired_status:
+        status_column = pick_status_column(item, kind)
+        if status_column:
+            current_status = status_column.get("text") or ""
+            if not statuses_match(current_status, desired_status):
+                if not DRY_RUN:
+                    update_monday_status(
+                        item_id=item_id,
+                        board_id=item_board_id,
+                        column_id=str(status_column["id"]),
+                        status=desired_status,
+                    )
+                results.append("would_update_status" if DRY_RUN else "updated_status")
+        else:
+            results.append("skipped_no_status_column")
+
+    if results:
+        return "+".join(results)
+    return "unchanged"
 
 
 def main() -> None:

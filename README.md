@@ -32,15 +32,24 @@ Event shape:
 - transparency: free/transparent
 - color: based on status
   - Done: green
-  - Working/in progress: yellow
+  - Working/in progress: orange
   - Blocked/stuck/problem: red
-  - Waiting/hold/later: orange
-  - Unknown/no status: blue
+  - Not Started: gray
+  - Waiting/hold/later: yellow
+  - Project/unknown/no status: blue
+
+Google Calendar color controls for reverse status sync:
+
+- green → `Done`
+- orange → `Working on it`
+- red → `Stuck`
+- gray → `Not Started`
+- blue is intentionally not a command, so moving existing/default-blue events does not accidentally rewrite monday.com statuses.
 
 Important behavior:
 
 - If a parent item is marked `Done`, dated subitems inherit `Done` in Google Calendar even if the subitem's own status still says `Working on it`.
-- If a script-owned Google Calendar mirror event is moved to another day/time, the reverse sync updates that Monday item's date column. It does not update titles, statuses, owners, notes, or non-mirrored calendar events.
+- If a script-owned Google Calendar mirror event is moved to another day/time, the reverse sync updates that Monday item's date column. If the event color is changed to a command color, the reverse sync updates that Monday item's status. It does not update titles, owners, notes, or non-mirrored calendar events.
 - If a dated Monday item/subitem has a blank human `Text` field, `scripts/suggest_monday_task_descriptions.py` can prepare an approval queue and then write approved wording back to Monday. The next Monday → Google sync carries that text into the Calendar event description.
 - If a dated Monday item/subitem has a user-entered `URL`/link column value, the next Monday → Google sync includes it in the Calendar event description before the Monday item link.
 

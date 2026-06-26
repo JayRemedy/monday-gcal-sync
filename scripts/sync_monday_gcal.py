@@ -321,14 +321,16 @@ def collect_tasks() -> list[dict[str, Any]]:
 def status_color(status: str | None) -> str:
     s = (status or "").strip().lower()
     if s in {"done", "complete", "completed"}:
-        return "10"  # green
+        return "10"  # green / basil
     if "stuck" in s or "block" in s or "problem" in s:
-        return "11"  # red
+        return "11"  # red / tomato
     if "working" in s or "progress" in s or "doing" in s:
-        return "5"  # yellow
+        return "6"  # orange / tangerine
+    if "not started" in s or s in {"todo", "to do"}:
+        return "8"  # gray / graphite
     if "wait" in s or "hold" in s or "later" in s:
-        return "6"  # orange
-    return "9"  # blue
+        return "5"  # yellow / banana
+    return "9"  # blue / default
 
 
 def calendar_summary(t: dict[str, Any]) -> str:
@@ -443,9 +445,9 @@ def is_recent_google_time_edit(e: dict[str, Any], desired: dict[str, Any], *, no
     updated = parse_google_updated(e.get("updated"))
     if not updated:
         return False
-    now = now or dt.datetime.now(dt.UTC)
+    now = now or dt.datetime.now(dt.timezone.utc)
     if updated.tzinfo is None:
-        updated = updated.replace(tzinfo=dt.UTC)
+        updated = updated.replace(tzinfo=dt.timezone.utc)
     return dt.timedelta(0) <= now - updated <= dt.timedelta(seconds=RECENT_GOOGLE_EDIT_GUARD_SECONDS)
 
 

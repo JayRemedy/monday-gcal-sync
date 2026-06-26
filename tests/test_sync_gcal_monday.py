@@ -56,7 +56,7 @@ class SyncGcalMondayTests(unittest.TestCase):
         with patch.object(mod, "get_monday_item", return_value=item), patch.object(
             mod, "update_monday_date", side_effect=lambda **kwargs: calls.append(kwargs)
         ):
-            self.assertEqual(mod.sync_event(event), "updated")
+            self.assertEqual(mod.sync_event(event), "updated_date")
         self.assertEqual(calls, [{
             "item_id": "item123",
             "board_id": "board123",
@@ -64,6 +64,68 @@ class SyncGcalMondayTests(unittest.TestCase):
             "date": "2026-06-25",
             "time_value": None,
         }])
+
+    def test_color_id_maps_to_status_command(self):
+        self.assertEqual(mod.desired_status_from_event({"colorId": "10"}), "Done")
+        self.assertEqual(mod.desired_status_from_event({"colorId": "6"}), "Working on it")
+        self.assertEqual(mod.desired_status_from_event({"colorId": "11"}), "Stuck")
+        self.assertEqual(mod.desired_status_from_event({"colorId": "8"}), "Not Started")
+        self.assertIsNone(mod.desired_status_from_event({"colorId": "9"}))
+
+    def test_sync_event_updates_status_from_calendar_color(self):
+        status_calls = []
+        date_calls = []
+        item = {
+            "id": "item123",
+            "name": "Task",
+            "board": {"id": "board123"},
+            "column_values": [
+                {"id": "date", "type": "date", "value": '{"date":"2026-06-25"}'},
+                {"id": "project_status", "type": "status", "text": "Not Started", "value": None},
+            ],
+        }
+        event = {
+            "id": "event123",
+            "colorId": "10",
+            "start": {"date": "2026-06-25"},
+            "extendedProperties": {"private": {"source": mod.SOURCE, "mondayItemId": "item123", "mondayKind": "item"}},
+        }
+        with patch.object(mod, "get_monday_item", return_value=item), patch.object(
+            mod, "update_monday_date", side_effect=lambda **kwargs: date_calls.append(kwargs)
+        ), patch.object(mod, "update_monday_status", side_effect=lambda **kwargs: status_calls.append(kwargs)):
+            self.assertEqual(mod.sync_event(event), "updated_status")
+        self.assertEqual(date_calls, [])
+        self.assertEqual(status_calls, [{
+            "item_id": "item123",
+            "board_id": "board123",
+            "column_id": "project_status",
+            "status": "Done",
+        }])
+
+    def test_sync_event_updates_date_and_status_together(self):
+        date_calls = []
+        status_calls = []
+        item = {
+            "id": "item123",
+            "name": "Task",
+            "board": {"id": "board123"},
+            "column_values": [
+                {"id": "date", "type": "date", "value": '{"date":"2026-06-24"}'},
+                {"id": "project_status", "type": "status", "text": "Not Started", "value": None},
+            ],
+        }
+        event = {
+            "id": "event123",
+            "colorId": "6",
+            "start": {"date": "2026-06-25"},
+            "extendedProperties": {"private": {"source": mod.SOURCE, "mondayItemId": "item123", "mondayKind": "item"}},
+        }
+        with patch.object(mod, "get_monday_item", return_value=item), patch.object(
+            mod, "update_monday_date", side_effect=lambda **kwargs: date_calls.append(kwargs)
+        ), patch.object(mod, "update_monday_status", side_effect=lambda **kwargs: status_calls.append(kwargs)):
+            self.assertEqual(mod.sync_event(event), "updated_date+updated_status")
+        self.assertEqual(date_calls[0]["date"], "2026-06-25")
+        self.assertEqual(status_calls[0]["status"], "Working on it")
 
     def test_sync_deleted_event_archives_matching_monday_item(self):
         calls = []

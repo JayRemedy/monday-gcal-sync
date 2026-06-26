@@ -55,6 +55,13 @@ class SyncMondayGcalTests(unittest.TestCase):
             "Uptime monitor",
         )
 
+    def test_status_color_matches_calendar_status_commands(self):
+        self.assertEqual(mod.status_color("Done"), "10")
+        self.assertEqual(mod.status_color("Working on it"), "6")
+        self.assertEqual(mod.status_color("Stuck"), "11")
+        self.assertEqual(mod.status_color("Not Started"), "8")
+        self.assertEqual(mod.status_color("Project"), "9")
+
     def test_recent_google_time_edit_is_guarded(self):
         existing = {
             "updated": "2026-06-26T16:42:00Z",
@@ -62,7 +69,7 @@ class SyncMondayGcalTests(unittest.TestCase):
             "end": {"date": "2026-06-28"},
         }
         desired = {"start": {"date": "2026-06-26"}, "end": {"date": "2026-06-27"}}
-        now = mod.dt.datetime(2026, 6, 26, 16, 43, 0, tzinfo=mod.dt.UTC)
+        now = mod.dt.datetime(2026, 6, 26, 16, 43, 0, tzinfo=mod.dt.timezone.utc)
         self.assertTrue(mod.is_recent_google_time_edit(existing, desired, now=now))
 
     def test_old_google_time_difference_is_not_guarded(self):
@@ -72,7 +79,7 @@ class SyncMondayGcalTests(unittest.TestCase):
             "end": {"date": "2026-06-28"},
         }
         desired = {"start": {"date": "2026-06-26"}, "end": {"date": "2026-06-27"}}
-        now = mod.dt.datetime(2026, 6, 26, 16, 43, 0, tzinfo=mod.dt.UTC)
+        now = mod.dt.datetime(2026, 6, 26, 16, 43, 0, tzinfo=mod.dt.timezone.utc)
         self.assertFalse(mod.is_recent_google_time_edit(existing, desired, now=now))
 
 
