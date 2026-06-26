@@ -32,19 +32,21 @@ Event shape:
 - transparency: free/transparent
 - color: based on status
   - Done: basil
-  - Working/in progress: blueberry
-  - Blank/no status: graphite
+  - Working/in progress: calendar/default color
+  - Blank/no status: blueberry
   - Blocked/stuck/problem: tomato
-  - Not Started: graphite
+  - Not Started: blueberry
+  - Cancelled: graphite
   - Waiting/hold/later: banana
   - Project/unknown: blueberry
 
 Google Calendar color controls for reverse status sync:
 
-- blueberry → `Working on it`
+- calendar/default color → `Working on it`
+- blueberry → `Not Started`
 - basil → `Done`
 - tomato → `Stuck`
-- graphite → `Not Started`
+- graphite → `Cancelled`
 
 Important behavior:
 

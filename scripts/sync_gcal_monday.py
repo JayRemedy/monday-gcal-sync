@@ -35,13 +35,14 @@ REVERSE_LOOKBACK_MINUTES = int(os.environ.get("GOOGLE_REVERSE_LOOKBACK_MINUTES",
 DELETE_LOOKBACK_MINUTES = int(os.environ.get("GOOGLE_DELETE_LOOKBACK_MINUTES", "60"))
 
 # Explicit Google Calendar event color commands for monday.com Status.
-# Google color IDs: 9=blueberry, 10=basil, 11=tomato. John wants
-# blank/Working on it shown as blueberry, not tangerine/orange.
+# Google color IDs: 8=graphite, 9=blueberry, 10=basil, 11=tomato.
+# Missing colorId means the event uses the calendar/default color.
 DEFAULT_COLOR_STATUS_MAP = {
-    "9": "Working on it",  # blueberry
+    "": "Working on it",   # calendar/default color
+    "9": "Not Started",   # blueberry
     "10": "Done",         # basil
     "11": "Stuck",        # tomato
-    "8": "Not Started",   # graphite
+    "8": "Cancelled",     # graphite
 }
 
 
@@ -243,8 +244,6 @@ def load_color_status_map() -> dict[str, str]:
 
 def desired_status_from_event(event: dict[str, Any]) -> str | None:
     color_id = str(event.get("colorId") or "").strip()
-    if not color_id:
-        return None
     return load_color_status_map().get(color_id)
 
 

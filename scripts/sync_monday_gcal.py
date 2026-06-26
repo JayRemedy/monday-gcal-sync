@@ -318,18 +318,20 @@ def collect_tasks() -> list[dict[str, Any]]:
     return tasks
 
 
-def status_color(status: str | None) -> str:
+def status_color(status: str | None) -> str | None:
     s = (status or "").strip().lower()
     if not s:
-        return "8"  # graphite; blank Monday status behaves like Not Started
+        return "9"  # blueberry; blank Monday status behaves like Not Started
     if s in {"done", "complete", "completed"}:
         return "10"  # basil
     if "stuck" in s or "block" in s or "problem" in s:
         return "11"  # tomato
-    if "working" in s or "progress" in s or "doing" in s:
-        return "9"  # blueberry
-    if "not started" in s or s in {"todo", "to do"}:
+    if "cancel" in s:
         return "8"  # graphite
+    if "working" in s or "progress" in s or "doing" in s:
+        return None  # calendar/default color
+    if "not started" in s or s in {"todo", "to do"}:
+        return "9"  # blueberry
     if "wait" in s or "hold" in s or "later" in s:
         return "5"  # banana
     return "9"  # blueberry fallback
@@ -382,10 +384,10 @@ def event_times(t: dict[str, Any]) -> dict[str, dict[str, str]]:
 
 
 def event_body(t: dict[str, Any]) -> dict[str, Any]:
+    color_id = status_color(t.get("status"))
     body = {
         "summary": calendar_summary(t),
         "description": task_description(t),
-        "colorId": status_color(t.get("status")),
         "transparency": "transparent",
         "source": {"title": f"monday.com {BOARD_NAME}", "url": t.get("url") or "https://monday.com/"},
         "extendedProperties": {"private": {
@@ -396,6 +398,8 @@ def event_body(t: dict[str, Any]) -> dict[str, Any]:
             "mondayStatus": t.get("status") or "",
         }},
     }
+    if color_id is not None:
+        body["colorId"] = color_id
     body.update(event_times(t))
     return body
 
