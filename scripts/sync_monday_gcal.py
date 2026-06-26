@@ -35,6 +35,7 @@ TIMEZONE = os.environ.get("GOOGLE_CALENDAR_TIMEZONE", "America/New_York")
 SOURCE = os.environ.get("SYNC_SOURCE", f"monday_{BOARD_NAME.lower().replace(' ', '_')}")
 GOOGLE_TIME_MIN = os.environ.get("GOOGLE_TIME_MIN", "2025-01-01T00:00:00Z")
 GOOGLE_TIME_MAX = os.environ.get("GOOGLE_TIME_MAX", "2032-12-31T23:59:59Z")
+RECENT_GOOGLE_EDIT_GUARD_SECONDS = int(os.environ.get("RECENT_GOOGLE_EDIT_GUARD_SECONDS", "600"))
 
 
 def http_json(url: str, *, method: str = "GET", headers: dict[str, str] | None = None, body: Any = None, timeout: int = 45) -> dict[str, Any]:
@@ -360,6 +361,14 @@ def normalized_existing(e: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def calendar_times_differ(e: dict[str, Any], desired: dict[str, Any]) -> bool:
+    cur = normalized_existing(e)
+    if cur["start"].get("date") or desired["start"].get("date"):
+        return cur["start"].get("date") != desired["start"].get("date") or cur["end"].get("date") != desired["end"].get("date")
+    return (cur["start"].get("dateTime", "")[:19] != desired["start"].get("dateTime", "")[:19]
+            or cur["end"].get("dateTime", "")[:19] != desired["end"].get("dateTime", "")[:19])
+
+
 def event_needs_update(e: dict[str, Any], desired: dict[str, Any]) -> bool:
     cur = normalized_existing(e)
     if cur["summary"] != desired["summary"]:
@@ -370,10 +379,28 @@ def event_needs_update(e: dict[str, Any], desired: dict[str, Any]) -> bool:
         return True
     if cur["transparency"] != desired.get("transparency"):
         return True
-    if cur["start"].get("date") or desired["start"].get("date"):
-        return cur["start"].get("date") != desired["start"].get("date") or cur["end"].get("date") != desired["end"].get("date")
-    return (cur["start"].get("dateTime", "")[:19] != desired["start"].get("dateTime", "")[:19]
-            or cur["end"].get("dateTime", "")[:19] != desired["end"].get("dateTime", "")[:19])
+    return calendar_times_differ(e, desired)
+
+
+def parse_google_updated(value: str | None) -> dt.datetime | None:
+    if not value:
+        return None
+    try:
+        return dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def is_recent_google_time_edit(e: dict[str, Any], desired: dict[str, Any], *, now: dt.datetime | None = None) -> bool:
+    if not calendar_times_differ(e, desired):
+        return False
+    updated = parse_google_updated(e.get("updated"))
+    if not updated:
+        return False
+    now = now or dt.datetime.now(dt.UTC)
+    if updated.tzinfo is None:
+        updated = updated.replace(tzinfo=dt.UTC)
+    return dt.timedelta(0) <= now - updated <= dt.timedelta(seconds=RECENT_GOOGLE_EDIT_GUARD_SECONDS)
 
 
 def main() -> None:
@@ -382,7 +409,7 @@ def main() -> None:
     tasks = collect_tasks()
     active_ids = {str(t["id"]) for t in tasks}
     existing = gc.existing_events(cal_id)
-    created = updated = deleted = 0
+    created = updated = deleted = skipped_recent_google = 0
 
     for t in tasks:
         desired = event_body(t)
@@ -391,6 +418,9 @@ def main() -> None:
             gc.insert_event(cal_id, desired)
             created += 1
         elif event_needs_update(e, desired):
+            if is_recent_google_time_edit(e, desired):
+                skipped_recent_google += 1
+                continue
             gc.update_event(cal_id, e["id"], desired)
             updated += 1
 
@@ -405,6 +435,7 @@ def main() -> None:
         "created": created,
         "updated": updated,
         "deleted": deleted,
+        "skipped_recent_google": skipped_recent_google,
         "active_dated_tasks": len(tasks),
     }
     result_path = os.environ.get("SYNC_RESULT_PATH")
@@ -412,7 +443,7 @@ def main() -> None:
         with open(result_path, "w") as f:
             json.dump(result, f, indent=2)
             f.write("\n")
-    print(f"{CALENDAR_NAME} sync: created {created}, updated {updated}, deleted {deleted}; active dated tasks {len(tasks)}")
+    print(f"{CALENDAR_NAME} sync: created {created}, updated {updated}, deleted {deleted}, skipped recent Google edits {skipped_recent_google}; active dated tasks {len(tasks)}")
 
 
 if __name__ == "__main__":

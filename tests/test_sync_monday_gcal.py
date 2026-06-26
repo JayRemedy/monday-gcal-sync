@@ -46,6 +46,26 @@ class SyncMondayGcalTests(unittest.TestCase):
             "Uptime monitor",
         )
 
+    def test_recent_google_time_edit_is_guarded(self):
+        existing = {
+            "updated": "2026-06-26T16:42:00Z",
+            "start": {"date": "2026-06-27"},
+            "end": {"date": "2026-06-28"},
+        }
+        desired = {"start": {"date": "2026-06-26"}, "end": {"date": "2026-06-27"}}
+        now = mod.dt.datetime(2026, 6, 26, 16, 43, 0, tzinfo=mod.dt.UTC)
+        self.assertTrue(mod.is_recent_google_time_edit(existing, desired, now=now))
+
+    def test_old_google_time_difference_is_not_guarded(self):
+        existing = {
+            "updated": "2026-06-26T16:20:00Z",
+            "start": {"date": "2026-06-27"},
+            "end": {"date": "2026-06-28"},
+        }
+        desired = {"start": {"date": "2026-06-26"}, "end": {"date": "2026-06-27"}}
+        now = mod.dt.datetime(2026, 6, 26, 16, 43, 0, tzinfo=mod.dt.UTC)
+        self.assertFalse(mod.is_recent_google_time_edit(existing, desired, now=now))
+
 
 if __name__ == "__main__":
     unittest.main()
