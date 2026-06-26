@@ -32,7 +32,8 @@ Event shape:
 - transparency: free/transparent
 - color: based on status
   - Done: basil
-  - Working/in progress/blank/no status: blueberry
+  - Working/in progress: blueberry
+  - Blank/no status: graphite
   - Blocked/stuck/problem: tomato
   - Not Started: graphite
   - Waiting/hold/later: banana

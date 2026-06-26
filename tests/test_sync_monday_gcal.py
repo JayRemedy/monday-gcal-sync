@@ -58,8 +58,8 @@ class SyncMondayGcalTests(unittest.TestCase):
     def test_status_color_matches_calendar_status_commands(self):
         self.assertEqual(mod.status_color("Done"), "10")
         self.assertEqual(mod.status_color("Working on it"), "9")
-        self.assertEqual(mod.status_color(""), "9")
-        self.assertEqual(mod.status_color(None), "9")
+        self.assertEqual(mod.status_color(""), "8")
+        self.assertEqual(mod.status_color(None), "8")
         self.assertEqual(mod.status_color("Stuck"), "11")
         self.assertEqual(mod.status_color("Not Started"), "8")
         self.assertEqual(mod.status_color("Project"), "9")
