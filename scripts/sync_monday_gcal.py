@@ -318,23 +318,17 @@ def collect_tasks() -> list[dict[str, Any]]:
     return tasks
 
 
-def status_color(status: str | None) -> str | None:
+def status_color(status: str | None) -> str:
     s = (status or "").strip().lower()
-    if not s:
-        return "9"  # blueberry; blank Monday status behaves like Not Started
     if s in {"done", "complete", "completed"}:
-        return "10"  # basil
+        return "10"  # green / basil
     if "stuck" in s or "block" in s or "problem" in s:
-        return "11"  # tomato
-    if "cancel" in s:
-        return "8"  # graphite
+        return "11"  # red / tomato
     if "working" in s or "progress" in s or "doing" in s:
-        return None  # calendar/default color
-    if "not started" in s or s in {"todo", "to do"}:
-        return "9"  # blueberry
+        return "5"  # yellow / banana
     if "wait" in s or "hold" in s or "later" in s:
-        return "5"  # banana
-    return "9"  # blueberry fallback
+        return "6"  # orange / tangerine
+    return "9"  # blue / blueberry
 
 
 def calendar_summary(t: dict[str, Any]) -> str:
