@@ -326,12 +326,12 @@ def status_color(status: str | None) -> str | None:
         return "10"  # basil
     if "stuck" in s or "block" in s or "problem" in s:
         return "11"  # tomato
-    if "working" in s or "progress" in s or "doing" in s:
-        return "9"  # blueberry
-    if "not started" in s or s in {"todo", "to do"}:
-        return "8"  # graphite
     if "cancel" in s:
         return "8"  # graphite
+    if "working" in s or "progress" in s or "doing" in s:
+        return None  # calendar/default color
+    if "not started" in s or s in {"todo", "to do"}:
+        return "9"  # blueberry
     if "wait" in s or "hold" in s or "later" in s:
         return "5"  # banana
     return "9"  # blueberry fallback
