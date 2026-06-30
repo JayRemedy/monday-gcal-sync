@@ -322,6 +322,8 @@ def status_color(status: str | None) -> str:
     s = (status or "").strip().lower()
     if s in {"done", "complete", "completed"}:
         return "10"  # green / basil
+    if s == "focus":
+        return "3"  # purple / grape
     if "stuck" in s or "block" in s or "problem" in s:
         return "11"  # red / tomato
     if "working" in s or "progress" in s or "doing" in s:

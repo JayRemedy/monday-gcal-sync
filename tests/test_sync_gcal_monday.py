@@ -68,6 +68,7 @@ class SyncGcalMondayTests(unittest.TestCase):
 
     def test_color_id_maps_to_status_command(self):
         self.assertEqual(mod.desired_status_from_event({}), "Working on it")
+        self.assertEqual(mod.desired_status_from_event({"colorId": "3"}), "Focus")
         self.assertEqual(mod.desired_status_from_event({"colorId": "9"}), "Not Started")
         self.assertEqual(mod.desired_status_from_event({"colorId": "10"}), "Done")
         self.assertIsNone(mod.desired_status_from_event({"colorId": "6"}))
