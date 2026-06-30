@@ -60,6 +60,7 @@ class SyncMondayGcalTests(unittest.TestCase):
         self.assertEqual(mod.status_color("Working on it"), "5")
         self.assertEqual(mod.status_color(""), "9")
         self.assertEqual(mod.status_color(None), "9")
+        self.assertEqual(mod.status_color("Focus"), "3")
         self.assertEqual(mod.status_color("Stuck"), "11")
         self.assertEqual(mod.status_color("Not Started"), "9")
         self.assertEqual(mod.status_color("Waiting"), "6")
@@ -79,6 +80,20 @@ class SyncMondayGcalTests(unittest.TestCase):
             "url": "https://monday.com/items/123",
         })
         self.assertEqual(body["colorId"], "5")
+
+    def test_focus_status_uses_grape_color(self):
+        body = mod.event_body({
+            "id": "123",
+            "summary": "[contacts viability]",
+            "group": "Daily Focus",
+            "status": "Focus",
+            "kind": "item",
+            "text": "",
+            "task_urls": [],
+            "date": "2026-06-30",
+            "url": "https://monday.com/items/123",
+        })
+        self.assertEqual(body["colorId"], "3")
 
     def test_recent_google_time_edit_is_guarded(self):
         existing = {
